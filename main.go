@@ -19,7 +19,9 @@ func main() {
 	}
 
 	db := bun.NewDB(sqldb, mysqldialect.New())
-	defer db.Close()
+	defer func(db *bun.DB) {
+		_ = db.Close()
+	}(db)
 	db.AddQueryHook(bundebug.NewQueryHook(
 		bundebug.WithVerbose(true),
 		bundebug.FromEnv("BUNDEBUG"),
@@ -27,12 +29,10 @@ func main() {
 	db.RegisterModel((*orm.Author)(nil), (*orm.Book)(nil))
 	//db.ResetModel(ctx, (*orm.Author)(nil), (*orm.Book)(nil))
 	//fmt.Println(db.Dialect().Tables())
-	if db.Dialect().Tables().ByName("authors") == nil {
-		res, err := db.NewCreateTable().Model((*orm.Author)(nil)).Exec(ctx)
+	if res, err := db.NewCreateTable().Model((*orm.Author)(nil)).IfNotExists().Exec(ctx); err != nil {
 		fmt.Println(res, err)
 	}
-	if db.Dialect().Tables().ByName("books") == nil {
-		res, err := db.NewCreateTable().Model((*orm.Book)(nil)).Exec(ctx)
+	if res, err := db.NewCreateTable().Model((*orm.Book)(nil)).IfNotExists().Exec(ctx); err != nil {
 		fmt.Println(res, err)
 	}
 	books := make([]orm.Book, 0)
